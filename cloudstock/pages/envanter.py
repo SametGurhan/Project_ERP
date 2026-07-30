@@ -56,15 +56,17 @@ def goster():
         st.markdown("---")
         st.markdown("### ✏️ Ürün Düzenle / Sil (Seçili Ürün Yönetimi)")
         
+        edit_secenekler = [f"[{u['urun_kodu']}] {u['barkod']} - {u['urun_adi']} ({u['renk']} - {u['beden']})" for u in veriler]
+        
         guncel_tablo_secimi = secim_sonucu.get("selection", {}).get("rows", [])
         
         if guncel_tablo_secimi != st.session_state.onceki_tablo_secimi:
             st.session_state.onceki_tablo_secimi = guncel_tablo_secimi
             if guncel_tablo_secimi:
                 st.session_state.secilen_index = guncel_tablo_secimi[0]
+                # Tablodan tıklandığında selectbox state'ini de güncelliyoruz
+                st.session_state.yonetim_selectbox = edit_secenekler[st.session_state.secilen_index]
 
-        edit_secenekler = [f"[{u['urun_kodu']}] {u['barkod']} - {u['urun_adi']} ({u['renk']} - {u['beden']})" for u in veriler]
-        
         if st.session_state.secilen_index >= len(edit_secenekler):
             st.session_state.secilen_index = 0
 

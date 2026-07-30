@@ -209,9 +209,6 @@ if "aktif_sayfa" not in st.session_state:
 # ==========================================
 with st.sidebar:
     st.markdown(f"👤 **Oturum:** {st.session_state.kullanici_adi} `({st.session_state.rol})`")
-    if st.button("🚪 Çıkış Yap", use_container_width=True):
-        st.session_state.giris_yapildi = False
-        st.rerun()
 
     st.markdown("---")
     st.markdown("### 🧭 Menü Navigasyonu")
@@ -265,6 +262,10 @@ with st.sidebar:
     </script>
     """
     st.components.v1.html(canli_saat_component, height=75)
+    #Çıkış butonu
+    if st.button("🚪 Çıkış Yap", use_container_width=True):
+        st.session_state.giris_yapildi = False
+        st.rerun()
 
 if tema_acik:
     st.markdown("""
@@ -329,12 +330,16 @@ if st.session_state.aktif_sayfa == "Envanter Yönetimi":
             st.markdown("---")
             st.markdown("### ✏️ Ürün Düzenle / Sil (Seçili Ürün Yönetimi)")
             
+            edit_secenekler = [f"[{u['urun_kodu']}] {u['barkod']} - {u['urun_adi']} ({u['renk']} - {u['beden']})" for u in veriler]
+            
             guncel_tablo_secimi = secim_sonucu.get("selection", {}).get("rows", [])
             if guncel_tablo_secimi != st.session_state.onceki_tablo_secimi:
                 st.session_state.onceki_tablo_secimi = guncel_tablo_secimi
-                if guncel_tablo_secimi: st.session_state.secilen_index = guncel_tablo_secimi[0]
+                if guncel_tablo_secimi: 
+                    st.session_state.secilen_index = guncel_tablo_secimi[0]
+                    # Tablodan tıklandığında selectbox state'ini de güncelliyoruz
+                    st.session_state.yonetim_selectbox = edit_secenekler[st.session_state.secilen_index]
 
-            edit_secenekler = [f"[{u['urun_kodu']}] {u['barkod']} - {u['urun_adi']} ({u['renk']} - {u['beden']})" for u in veriler]
             if st.session_state.secilen_index >= len(edit_secenekler): st.session_state.secilen_index = 0
 
             def selectbox_guncelle(): st.session_state.secilen_index = edit_secenekler.index(st.session_state.yonetim_selectbox)
