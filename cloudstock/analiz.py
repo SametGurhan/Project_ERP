@@ -481,3 +481,87 @@ elif st.session_state.aktif_sayfa == "Sayım":
 elif st.session_state.aktif_sayfa == "Faturalandırma":
     import pages.faturalandirma as sayfa_fatura
     sayfa_fatura.goster()
+
+
+def ai_stok_tahmini_yap(urun_adi, mevcut_stok, rastgele_satis_hizi=3):
+    """
+    Geçmiş 30 günün sanal satış verisini üretir, Scikit-Learn ile 
+    Lineer Regresyon modelini eğitir ve ürünün kaç gün sonra biteceğini tahmin eder.
+    """
+    import pandas as pd
+    import numpy as np
+    from sklearn.linear_model import LinearRegression
+    import datetime
+
+    bugun = datetime.date.today()
+    tarihler_gecmis = []
+    kalan_stoklar_gecmis = []
+    
+    sanal_stok = mevcut_stok + (rastgele_satis_hizi * 30) 
+    
+    for i in range(30, -1, -1):
+        tarih = bugun - datetime.timedelta(days=i)
+        
+        if i == 0:
+            gunluk_stok = mevcut_stok
+        else:
+            gunluk_satis = max(0, int(np.random.normal(rastgele_satis_hizi, scale=1.5)))
+            sanal_stok -= gunluk_satis
+            gunluk_stok = max(mevcut_stok, sanal_stok)
+
+        tarihler_gecmis.append(tarih)
+        kalan_stoklar_gecmis.append(gunluk_stok)
+
+    df_gecmis = pd.DataFrame({
+        'Tarih': tarihler_gecmis,
+        'Gün_Index': np.arange(31),
+        'Stok': kalan_stoklar_gecmis
+    })
+    
+    X_train = df_gecmis[['Gün_Index']]
+    y_train = df_gecmis['Stok']
+    
+    model = LinearRegression()
+    model.fit(X_train, y_train)
+    
+    gelecek_tarihler = []
+    gelecek_stoklar = []
+    
+    gunluk_erime = model.coef_[0] 
+    
+    if gunluk_erime < -0.1:
+        kalan_gun = abs(mevcut_stok / gunluk_erime)
+        tahmini_bitis_mesaji = f"🚨 Dikkat: Bu hızla giderse stok yaklaşık **{int(kalan_gun)} gün** sonra tamamen tükenecek!"
+    elif gunluk_erime > 0.1:
+        tahmini_bitis_mesaji = "✅ Stok artış trendinde, risk yok."
+    else:
+        tahmini_bitis_mesaji = "⚖️ Satışlar çok durağan, tükenme riski düşük."
+    
+    gelecek_tarihler.append(bugun)
+    gelecek_stoklar.append(mevcut_stok)
+    
+    for i in range(1, 16):
+        gelecek_tarih = bugun + datetime.timedelta(days=i)
+        gelecek_index = pd.DataFrame({'Gün_Index': [30 + i]})
+        
+        tahmin = model.predict(gelecek_index)[0]
+        
+        gelecek_tarihler.append(gelecek_tarih)
+        gelecek_stoklar.append(max(0, int(tahmin)))
+        
+    df_gelecek = pd.DataFrame({
+        'Tarih': gelecek_tarihler,
+        'Geçmiş Stok': [None] * 16,
+        'Yapay Zeka Tahmini (Gelecek)': gelecek_stoklar
+    })
+    
+    df_gecmis['Geçmiş Stok'] = df_gecmis['Stok']
+    df_gecmis['Yapay Zeka Tahmini (Gelecek)'] = [None] * 31
+    df_gecmis = df_gecmis.drop(columns=['Stok', 'Gün_Index'])
+    
+    df_gecmis.loc[df_gecmis.index[-1], 'Yapay Zeka Tahmini (Gelecek)'] = mevcut_stok
+    
+    df_grafik = pd.concat([df_gecmis, df_gelecek.iloc[1:]], ignore_index=True)
+    df_grafik.set_index('Tarih', inplace=True)
+    
+    return df_grafik, tahmini_bitis_mesaji    
